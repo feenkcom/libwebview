@@ -1,0 +1,17 @@
+[package]
+name = "libwebview"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "WebView"
+crate-type = ["cdylib"]
+
+[dependencies]
+wry = "0.41"
+raw-window-handle-extensions = "0.6"
+env_logger = "0.11"
+anyhow = "1.0"
+value-box = { version = "2.3", features = ["anyhow"] }
+string-box = "1.1"
+value-box-ffi = { version = "1", features = ["string-box"] }

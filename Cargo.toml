@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "libwebview",
+    "libwebview-builder",
+]
+
+exclude = [ "target" ]
+
+[profile.dev]
+opt-level = 0
+debug = true
+debug-assertions = true
+overflow-checks = true
+lto = 'thin'
+
+[profile.release]
+opt-level = 3
+lto = 'thin'
