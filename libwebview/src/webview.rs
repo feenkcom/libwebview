@@ -29,11 +29,8 @@ fn build(
     )))]
     let fixed = {
         use gtk::prelude::*;
-        use tao::platform::unix::WindowExtUnix;
 
         let fixed = gtk::Fixed::new();
-        let vbox = window.default_vbox().unwrap();
-        vbox.pack_start(&fixed, true, true, 0);
         fixed.show_all();
         fixed
     };
