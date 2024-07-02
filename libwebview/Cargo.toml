@@ -15,3 +15,6 @@ anyhow = "1.0"
 value-box = { version = "2.3", features = ["anyhow"] }
 string-box = "1.1"
 value-box-ffi = { version = "1", features = ["string-box"] }
+
+[target."cfg(any(target_os = \"linux\", target_os = \"dragonfly\", target_os = \"freebsd\", target_os = \"openbsd\", target_os = \"netbsd\"))".dependencies.gtk]
+version = "0.18"

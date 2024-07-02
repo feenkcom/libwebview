@@ -21,7 +21,45 @@ fn build(
 
     let window_handle = unsafe { WindowHandle::borrow_raw(raw_window_handle) };
 
-    let mut builder = WebViewBuilder::new_as_child(&window_handle);
+    #[cfg(not(any(
+        target_os = "windows",
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "android"
+    )))]
+    let fixed = {
+        use gtk::prelude::*;
+        use tao::platform::unix::WindowExtUnix;
+
+        let fixed = gtk::Fixed::new();
+        let vbox = window.default_vbox().unwrap();
+        vbox.pack_start(&fixed, true, true, 0);
+        fixed.show_all();
+        fixed
+    };
+
+    let create_webview_builder = || {
+        #[cfg(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "android"
+        ))]
+        return WebViewBuilder::new_as_child(&window_handle);
+
+        #[cfg(not(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "android"
+        )))]
+        {
+            use wry::WebViewBuilderExtUnix;
+            WebViewBuilder::new_gtk(&fixed)
+        }
+    };
+
+    let mut builder = create_webview_builder();
 
     attributes.take_value().map(|mut attributes| {
         attributes.devtools = true;

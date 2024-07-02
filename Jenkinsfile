@@ -25,9 +25,9 @@ pipeline {
         WINDOWS_ARM64_SERVER_NAME = 'bugs-bunny'
         WINDOWS_ARM64_TARGET = 'aarch64-pc-windows-msvc'
 
-        LINUX_AMD64_SERVER_NAME = 'mickey-mouse'
+        LINUX_AMD64_SERVER_NAME = 'fred-flintstone'
         LINUX_AMD64_TARGET = 'x86_64-unknown-linux-gnu'
-        LINUX_ARM64_SERVER_NAME = 'peter-pan'
+        LINUX_ARM64_SERVER_NAME = 'pink-panther'
         LINUX_ARM64_TARGET = 'aarch64-unknown-linux-gnu'
 
         ANDROID_ARM64_TARGET = 'aarch64-linux-android'

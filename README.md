@@ -8,3 +8,8 @@ Ubuntu 20.04 and older is not supported.
 ```bash
 sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
 ```
+
+## Fedora
+```
+sudo dnf install libsoup3-devel webkit2gtk4.1-devel
+```
