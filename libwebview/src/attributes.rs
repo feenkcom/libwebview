@@ -1,7 +1,9 @@
 use string_box::StringBox;
 use value_box::{ReturnBoxerResult, ValueBox, ValueBoxPointer};
-use wry::dpi::{LogicalPosition, Position, Size};
 use wry::{dpi, Rect, WebViewAttributes};
+use wry::dpi::{LogicalPosition, Position, Size};
+
+use crate::ipc::IpcHandler;
 
 #[no_mangle]
 pub extern "C" fn webview_attributes_default() -> *mut ValueBox<WebViewAttributes> {
@@ -21,6 +23,36 @@ pub extern "C" fn webview_attributes_set_url(
                 } else {
                     attributes.url = None;
                 }
+            })
+        })
+        .log();
+}
+
+#[no_mangle]
+pub extern "C" fn webview_attributes_set_html(
+    attributes: *mut ValueBox<WebViewAttributes>,
+    html: *mut ValueBox<StringBox>,
+) {
+    attributes
+        .with_mut(|attributes| {
+            html.with_ref_ok(|html| {
+                attributes.html = Some(html.to_string());
+            })
+        })
+        .log();
+}
+
+#[no_mangle]
+pub extern "C" fn webview_attributes_set_ipc_handler(
+    attributes: *mut ValueBox<WebViewAttributes>,
+    ipc_handler: *mut ValueBox<IpcHandler>,
+) {
+    attributes
+        .with_mut(|attributes| {
+            ipc_handler.with_clone_ok(|ipc_handler| {
+                attributes.ipc_handler = Some(Box::new(move |request| {
+                    ipc_handler.enqueue(request);
+                }))
             })
         })
         .log();
