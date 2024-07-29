@@ -1,13 +1,14 @@
 use string_box::StringBox;
 use value_box::{ReturnBoxerResult, ValueBox, ValueBoxPointer};
-use wry::{dpi, Rect, WebViewAttributes};
 use wry::dpi::{LogicalPosition, Position, Size};
+use wry::{dpi, Rect, WebViewAttributes};
 
-use crate::ipc::IpcHandler;
+use crate::events_handler::EventsHandler;
 
 #[no_mangle]
 pub extern "C" fn webview_attributes_default() -> *mut ValueBox<WebViewAttributes> {
-    ValueBox::new(WebViewAttributes::default()).into_raw()
+    let attributes = WebViewAttributes::default();
+    ValueBox::new(attributes).into_raw()
 }
 
 #[no_mangle]
@@ -43,15 +44,25 @@ pub extern "C" fn webview_attributes_set_html(
 }
 
 #[no_mangle]
-pub extern "C" fn webview_attributes_set_ipc_handler(
+pub extern "C" fn webview_attributes_set_events_handler(
     attributes: *mut ValueBox<WebViewAttributes>,
-    ipc_handler: *mut ValueBox<IpcHandler>,
+    events_handler: *mut ValueBox<EventsHandler>,
 ) {
     attributes
         .with_mut(|attributes| {
-            ipc_handler.with_clone_ok(|ipc_handler| {
+            events_handler.with_clone_ok(|event_handler| {
+                let handler_for_ipc = event_handler.clone();
                 attributes.ipc_handler = Some(Box::new(move |request| {
-                    ipc_handler.enqueue(request);
+                    handler_for_ipc.enqueue_request(request);
+                }));
+                let handler_for_navigation = event_handler.clone();
+                attributes.navigation_handler = Some(Box::new(move |url| {
+                    handler_for_navigation.enqueue_navigation(url);
+                    true
+                }));
+                let handler_for_loading = event_handler.clone();
+                attributes.on_page_load_handler = Some(Box::new(move |event, url| {
+                    handler_for_loading.enqueue_page_load(event, url);
                 }))
             })
         })
@@ -80,6 +91,20 @@ pub extern "C" fn webview_attributes_set_position(
                         size: dpi::LogicalSize::new(200, 200).into(),
                     })
                 })
+        })
+        .log();
+}
+
+#[no_mangle]
+pub extern "C" fn webview_attributes_set_initial_script(
+    attributes: *mut ValueBox<WebViewAttributes>,
+    script: *mut ValueBox<StringBox>,
+) {
+    script
+        .with_ref(|script| {
+            attributes.with_mut_ok(|attributes| {
+                attributes.initialization_scripts.push(script.to_string())
+            })
         })
         .log();
 }

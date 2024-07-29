@@ -1,7 +1,7 @@
 mod attributes;
 mod webview;
 mod script;
-mod ipc;
+mod events_handler;
 
 pub use value_box_ffi::*;
 

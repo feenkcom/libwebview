@@ -1,9 +1,10 @@
 use anyhow::anyhow;
 use raw_window_handle_extensions::VeryRawWindowHandle;
+use string_box::StringBox;
 use value_box::{ReturnBoxerResult, ValueBox, ValueBoxIntoRaw, ValueBoxPointer};
-use wry::{Rect, WebView, WebViewAttributes, WebViewBuilder};
 use wry::dpi::{LogicalPosition, LogicalSize};
 use wry::raw_window_handle::{RawWindowHandle, WindowHandle};
+use wry::{Rect, WebView, WebViewAttributes, WebViewBuilder};
 
 use crate::script::ScriptToEvaluate;
 
@@ -118,6 +119,27 @@ pub extern "C" fn webview_set_bounds(
             webview.set_bounds(Rect {
                 position: LogicalPosition::new(x, y).into(),
                 size: LogicalSize::new(width, height).into(),
+            })
+        })
+        .log();
+}
+
+#[no_mangle]
+pub extern "C" fn webview_toggle_visible(webview: *mut ValueBox<WebView>) {
+    webview
+        .with_ref_ok(|webview| {
+            let _ = webview.set_visible(false);
+            let _ = webview.set_visible(true);
+        })
+        .log();
+}
+
+#[no_mangle]
+pub extern "C" fn webview_load_url(webview: *mut ValueBox<WebView>, url: *mut ValueBox<StringBox>) {
+    webview
+        .with_ref(|webview| {
+            url.with_ref_ok(|url| {
+                let _ = webview.load_url(url.as_str());
             })
         })
         .log();
