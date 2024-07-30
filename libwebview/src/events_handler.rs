@@ -10,6 +10,8 @@ use wry::PageLoadEvent;
 #[derive(Clone)]
 pub struct EventsHandler(Arc<EventsHandlerData>);
 
+pub type WebViewId = u64;
+
 struct EventsHandlerData {
     events: Mutex<VecDeque<WebViewEvent>>,
     semaphore_index: usize,
@@ -17,16 +19,26 @@ struct EventsHandlerData {
 }
 
 impl EventsHandler {
-    pub fn enqueue_request(&self, request: Request<String>) {
-        self.enqueue_event(WebViewEvent::Request(WebViewRequestEvent(request)));
+    pub fn enqueue_request(&self, webview_id: WebViewId, request: Request<String>) {
+        self.enqueue_event(WebViewEvent::Request(WebViewRequestEvent {
+            webview_id,
+            request,
+        }));
     }
 
-    pub fn enqueue_navigation(&self, url: String) {
-        self.enqueue_event(WebViewEvent::Navigation(WebViewNavigationEvent(url)));
+    pub fn enqueue_navigation(&self, webview_id: WebViewId, url: String) {
+        self.enqueue_event(WebViewEvent::Navigation(WebViewNavigationEvent {
+            webview_id,
+            url,
+        }));
     }
 
-    pub fn enqueue_page_load(&self, event: PageLoadEvent, url: String) {
-        self.enqueue_event(WebViewEvent::PageLoad(WebViewPageLoadEvent(event, url)));
+    pub fn enqueue_page_load(&self, webview_id: WebViewId, page_event: PageLoadEvent, url: String) {
+        self.enqueue_event(WebViewEvent::PageLoad(WebViewPageLoadEvent {
+            webview_id,
+            page_event,
+            url,
+        }));
     }
 
     fn enqueue_event(&self, event: WebViewEvent) {
@@ -47,9 +59,19 @@ pub enum WebViewEvent {
     PageLoad(WebViewPageLoadEvent),
 }
 
-pub struct WebViewRequestEvent(Request<String>);
-pub struct WebViewNavigationEvent(String);
-pub struct WebViewPageLoadEvent(PageLoadEvent, String);
+pub struct WebViewRequestEvent {
+    webview_id: u64,
+    request: Request<String>,
+}
+pub struct WebViewNavigationEvent {
+    webview_id: u64,
+    url: String,
+}
+pub struct WebViewPageLoadEvent {
+    webview_id: u64,
+    page_event: PageLoadEvent,
+    url: String,
+}
 
 impl WebViewEvent {
     pub fn get_type(&self) -> WebViewEventType {
@@ -127,8 +149,15 @@ pub extern "C" fn webview_navigation_event_get_url(
     url: *mut ValueBox<StringBox>,
 ) {
     event
-        .with_ref(|event| url.with_mut_ok(|url| url.set_string(event.0.clone())))
+        .with_ref(|event| url.with_mut_ok(|url| url.set_string(event.url.clone())))
         .log();
+}
+
+#[no_mangle]
+pub extern "C" fn webview_navigation_event_get_id(
+    event: *mut ValueBox<WebViewNavigationEvent>,
+) -> WebViewId {
+    event.with_ref_ok(|event| event.webview_id).or_log(0)
 }
 
 #[no_mangle]
@@ -137,8 +166,17 @@ pub extern "C" fn webview_request_event_get_content(
     content: *mut ValueBox<StringBox>,
 ) {
     event
-        .with_ref(|event| content.with_mut_ok(|content| content.set_string(event.0.body().clone())))
+        .with_ref(|event| {
+            content.with_mut_ok(|content| content.set_string(event.request.body().clone()))
+        })
         .log();
+}
+
+#[no_mangle]
+pub extern "C" fn webview_request_event_get_id(
+    event: *mut ValueBox<WebViewRequestEvent>,
+) -> WebViewId {
+    event.with_ref_ok(|event| event.webview_id).or_log(0)
 }
 
 #[no_mangle]
@@ -147,8 +185,15 @@ pub extern "C" fn webview_page_load_event_get_url(
     url: *mut ValueBox<StringBox>,
 ) {
     event
-        .with_ref(|event| url.with_mut_ok(|url| url.set_string(event.1.clone())))
+        .with_ref(|event| url.with_mut_ok(|url| url.set_string(event.url.clone())))
         .log();
+}
+
+#[no_mangle]
+pub extern "C" fn webview_page_load_event_get_id(
+    event: *mut ValueBox<WebViewPageLoadEvent>,
+) -> WebViewId {
+    event.with_ref_ok(|event| event.webview_id).or_log(0)
 }
 
 #[no_mangle]
@@ -156,7 +201,7 @@ pub extern "C" fn webview_page_load_event_is_started(
     event: *mut ValueBox<WebViewPageLoadEvent>,
 ) -> u8 {
     event
-        .with_ref_ok(|event| match event.0 {
+        .with_ref_ok(|event| match event.page_event {
             PageLoadEvent::Started => 1,
             PageLoadEvent::Finished => 2,
         })

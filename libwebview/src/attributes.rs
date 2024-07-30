@@ -3,7 +3,7 @@ use value_box::{ReturnBoxerResult, ValueBox, ValueBoxPointer};
 use wry::dpi::{LogicalPosition, Position, Size};
 use wry::{dpi, Rect, WebViewAttributes};
 
-use crate::events_handler::EventsHandler;
+use crate::events_handler::{EventsHandler, WebViewId};
 
 #[no_mangle]
 pub extern "C" fn webview_attributes_default() -> *mut ValueBox<WebViewAttributes> {
@@ -47,22 +47,23 @@ pub extern "C" fn webview_attributes_set_html(
 pub extern "C" fn webview_attributes_set_events_handler(
     attributes: *mut ValueBox<WebViewAttributes>,
     events_handler: *mut ValueBox<EventsHandler>,
+    webview_id: WebViewId
 ) {
     attributes
         .with_mut(|attributes| {
             events_handler.with_clone_ok(|event_handler| {
                 let handler_for_ipc = event_handler.clone();
                 attributes.ipc_handler = Some(Box::new(move |request| {
-                    handler_for_ipc.enqueue_request(request);
+                    handler_for_ipc.enqueue_request(webview_id, request);
                 }));
                 let handler_for_navigation = event_handler.clone();
                 attributes.navigation_handler = Some(Box::new(move |url| {
-                    handler_for_navigation.enqueue_navigation(url);
+                    handler_for_navigation.enqueue_navigation(webview_id,url);
                     true
                 }));
                 let handler_for_loading = event_handler.clone();
                 attributes.on_page_load_handler = Some(Box::new(move |event, url| {
-                    handler_for_loading.enqueue_page_load(event, url);
+                    handler_for_loading.enqueue_page_load(webview_id, event, url);
                 }))
             })
         })
