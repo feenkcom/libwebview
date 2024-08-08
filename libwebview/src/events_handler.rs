@@ -1,5 +1,7 @@
+use std::any::type_name;
 use std::collections::VecDeque;
 use std::ffi::c_void;
+use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 use string_box::StringBox;
 
@@ -53,6 +55,7 @@ impl EventsHandler {
     }
 }
 
+#[derive(Debug)]
 pub enum WebViewEvent {
     Request(WebViewRequestEvent),
     Navigation(WebViewNavigationEvent),
@@ -63,14 +66,50 @@ pub struct WebViewRequestEvent {
     webview_id: u64,
     request: Request<String>,
 }
+
+impl Debug for WebViewRequestEvent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(type_name::<Self>())
+            .field("webview_id", &self.webview_id)
+            .field("request", self.request.body())
+            .finish()
+    }
+}
+
 pub struct WebViewNavigationEvent {
     webview_id: u64,
     url: String,
 }
+
+impl Debug for WebViewNavigationEvent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(type_name::<Self>())
+            .field("webview_id", &self.webview_id)
+            .field("url", &self.url)
+            .finish()
+    }
+}
+
 pub struct WebViewPageLoadEvent {
     webview_id: u64,
     page_event: PageLoadEvent,
     url: String,
+}
+
+impl Debug for WebViewPageLoadEvent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(type_name::<Self>())
+            .field("webview_id", &self.webview_id)
+            .field(
+                "page_event",
+                match &self.page_event {
+                    PageLoadEvent::Started => &"Started",
+                    PageLoadEvent::Finished => &"Finished",
+                },
+            )
+            .field("url", &self.url)
+            .finish()
+    }
 }
 
 impl WebViewEvent {
