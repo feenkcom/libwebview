@@ -7,7 +7,8 @@ use crate::events_handler::{EventsHandler, WebViewId};
 
 #[no_mangle]
 pub extern "C" fn webview_attributes_default() -> *mut ValueBox<WebViewAttributes> {
-    let attributes = WebViewAttributes::default();
+    let mut attributes = WebViewAttributes::default();
+    attributes.focused = false;
     ValueBox::new(attributes).into_raw()
 }
 
