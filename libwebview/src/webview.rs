@@ -1,10 +1,11 @@
+use crate::events_handler::{EventsHandler, WebViewId};
 use anyhow::anyhow;
 use raw_window_handle_extensions::VeryRawWindowHandle;
 use string_box::StringBox;
 use value_box::{ReturnBoxerResult, ValueBox, ValueBoxIntoRaw, ValueBoxPointer};
 use wry::dpi::{LogicalPosition, LogicalSize};
 use wry::raw_window_handle::{RawWindowHandle, WindowHandle};
-use wry::{Rect, WebView, WebViewAttributes, WebViewBuilder};
+use wry::{Rect, WebView, WebViewAttributes, WebViewBuilder, WebViewExtWindows};
 
 use crate::script::ScriptToEvaluate;
 
@@ -122,6 +123,54 @@ pub extern "C" fn webview_set_bounds(
             })
         })
         .log();
+}
+
+#[no_mangle]
+pub extern "C" fn webview_set_event_handler(
+    webview: *mut ValueBox<WebView>,
+    events_handler: *mut ValueBox<EventsHandler>,
+    webview_id: WebViewId,
+) {
+    #[cfg(target_os = "windows")]
+    {
+        webview
+            .with_ref(|webview| {
+                events_handler.with_ref_ok(|events_handler| {
+                    use webview2_com::FocusChangedEventHandler;
+                    use windows::Win32::System::WinRT::EventRegistrationToken;
+                    use wry::WebViewExtWindows;
+
+                    let mut token = EventRegistrationToken::default();
+
+                    let got_focus_handler = events_handler.clone();
+                    let got_focus_callback = FocusChangedEventHandler::create(Box::new(|_, _| {
+                        got_focus_handler.enqueue_got_focus(webview_id);
+                        Ok(())
+                    }));
+
+                    let lost_focus_handler = events_handler.clone();
+                    let lost_focus_callback = FocusChangedEventHandler::create(Box::new(|_, _| {
+                        lost_focus_handler.enqueue_lost_focus(webview_id);
+                        Ok(())
+                    }));
+
+                    unsafe {
+                        webview
+                            .controller()
+                            .add_GotFocus(&got_focus_callback, &mut token)
+                            .expect("Set GotFocus handler");
+                    };
+
+                    unsafe {
+                        webview
+                            .controller()
+                            .add_LostFocus(&lost_focus_callback, &mut token)
+                            .expect("Set LostFocus handler");
+                    }
+                })
+            })
+            .log();
+    }
 }
 
 #[no_mangle]

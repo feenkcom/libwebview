@@ -43,6 +43,16 @@ impl EventsHandler {
         }));
     }
 
+    pub fn enqueue_got_focus(&self, webview_id: WebViewId) {
+        self.enqueue_event(WebViewEvent::GotFocus(WebViewGotFocusEvent { webview_id }));
+    }
+
+    pub fn enqueue_lost_focus(&self, webview_id: WebViewId) {
+        self.enqueue_event(WebViewEvent::LostFocus(WebViewLostFocusEvent {
+            webview_id,
+        }));
+    }
+
     fn enqueue_event(&self, event: WebViewEvent) {
         let mut lock = self.0.events.lock().unwrap();
         lock.push_back(event);
@@ -60,6 +70,8 @@ pub enum WebViewEvent {
     Request(WebViewRequestEvent),
     Navigation(WebViewNavigationEvent),
     PageLoad(WebViewPageLoadEvent),
+    GotFocus(WebViewGotFocusEvent),
+    LostFocus(WebViewLostFocusEvent),
 }
 
 pub struct WebViewRequestEvent {
@@ -112,12 +124,24 @@ impl Debug for WebViewPageLoadEvent {
     }
 }
 
+#[derive(Debug)]
+pub struct WebViewGotFocusEvent {
+    webview_id: u64,
+}
+
+#[derive(Debug)]
+pub struct WebViewLostFocusEvent {
+    webview_id: u64,
+}
+
 impl WebViewEvent {
     pub fn get_type(&self) -> WebViewEventType {
         match self {
             Self::Request(_) => WebViewEventType::Request,
             Self::Navigation(_) => WebViewEventType::Navigation,
             Self::PageLoad(_) => WebViewEventType::PageLoad,
+            Self::GotFocus(_) => WebViewEventType::GotFocus,
+            Self::LostFocus(_) => WebViewEventType::LostFocus,
         }
     }
 }
@@ -129,6 +153,8 @@ pub enum WebViewEventType {
     Request,
     Navigation,
     PageLoad,
+    GotFocus,
+    LostFocus,
 }
 
 #[no_mangle]
@@ -178,6 +204,8 @@ pub extern "C" fn webview_event_into_inner(event: *mut ValueBox<WebViewEvent>) -
             WebViewEvent::Request(event) => ValueBox::new(event).into_raw() as *mut c_void,
             WebViewEvent::Navigation(event) => ValueBox::new(event).into_raw() as *mut c_void,
             WebViewEvent::PageLoad(event) => ValueBox::new(event).into_raw() as *mut c_void,
+            WebViewEvent::GotFocus(event) => ValueBox::new(event).into_raw() as *mut c_void,
+            WebViewEvent::LostFocus(event) => ValueBox::new(event).into_raw() as *mut c_void,
         })
         .or_log(std::ptr::null_mut())
 }

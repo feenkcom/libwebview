@@ -98,7 +98,7 @@ pub extern "C" fn webview_attributes_set_position(
 }
 
 #[no_mangle]
-pub extern "C" fn webview_attributes_set_initial_script(
+pub extern "C" fn webview_attributes_add_initial_script(
     attributes: *mut ValueBox<WebViewAttributes>,
     script: *mut ValueBox<StringBox>,
 ) {
