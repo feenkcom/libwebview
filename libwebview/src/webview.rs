@@ -5,7 +5,7 @@ use string_box::StringBox;
 use value_box::{ReturnBoxerResult, ValueBox, ValueBoxIntoRaw, ValueBoxPointer};
 use wry::dpi::{LogicalPosition, LogicalSize};
 use wry::raw_window_handle::{RawWindowHandle, WindowHandle};
-use wry::{Rect, WebView, WebViewAttributes, WebViewBuilder, WebViewExtWindows};
+use wry::{Rect, WebView, WebViewAttributes, WebViewBuilder};
 
 use crate::script::ScriptToEvaluate;
 
@@ -143,13 +143,13 @@ pub extern "C" fn webview_set_event_handler(
                     let mut token = EventRegistrationToken::default();
 
                     let got_focus_handler = events_handler.clone();
-                    let got_focus_callback = FocusChangedEventHandler::create(Box::new(|_, _| {
+                    let got_focus_callback = FocusChangedEventHandler::create(Box::new(move |_, _| {
                         got_focus_handler.enqueue_got_focus(webview_id);
                         Ok(())
                     }));
 
                     let lost_focus_handler = events_handler.clone();
-                    let lost_focus_callback = FocusChangedEventHandler::create(Box::new(|_, _| {
+                    let lost_focus_callback = FocusChangedEventHandler::create(Box::new(move |_, _| {
                         lost_focus_handler.enqueue_lost_focus(webview_id);
                         Ok(())
                     }));
