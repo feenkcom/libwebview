@@ -294,3 +294,13 @@ pub extern "C" fn webview_page_load_event_release(event: *mut ValueBox<WebViewPa
 pub extern "C" fn webview_request_event_release(event: *mut ValueBox<WebViewRequestEvent>) {
     event.release();
 }
+
+#[no_mangle]
+pub extern "C" fn webview_got_focus_event_release(event: *mut ValueBox<WebViewGotFocusEvent>) {
+    event.release();
+}
+
+#[no_mangle]
+pub extern "C" fn webview_lost_focus_event_release(event: *mut ValueBox<WebViewLostFocusEvent>) {
+    event.release();
+}
