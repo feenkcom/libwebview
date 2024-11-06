@@ -276,6 +276,20 @@ pub extern "C" fn webview_page_load_event_is_started(
 }
 
 #[no_mangle]
+pub extern "C" fn webview_got_focus_event_get_id(
+    event: *mut ValueBox<WebViewGotFocusEvent>,
+) -> WebViewId {
+    event.with_ref_ok(|event| event.webview_id).or_log(0)
+}
+
+#[no_mangle]
+pub extern "C" fn webview_lost_focus_event_get_id(
+    event: *mut ValueBox<WebViewLostFocusEvent>,
+) -> WebViewId {
+    event.with_ref_ok(|event| event.webview_id).or_log(0)
+}
+
+#[no_mangle]
 pub extern "C" fn webview_event_release(event: *mut ValueBox<WebViewEvent>) {
     event.release();
 }
