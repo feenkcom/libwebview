@@ -1,6 +1,7 @@
 use crate::events_handler::{EventsHandler, WebViewId};
 use anyhow::anyhow;
 use raw_window_handle_extensions::VeryRawWindowHandle;
+use std::ffi::c_void;
 use string_box::StringBox;
 use value_box::{ReturnBoxerResult, ValueBox, ValueBoxIntoRaw, ValueBoxPointer};
 use wry::dpi::{LogicalPosition, LogicalSize};
@@ -143,16 +144,18 @@ pub extern "C" fn webview_set_event_handler(
                     let mut token = EventRegistrationToken::default();
 
                     let got_focus_handler = events_handler.clone();
-                    let got_focus_callback = FocusChangedEventHandler::create(Box::new(move |_, _| {
-                        got_focus_handler.enqueue_got_focus(webview_id);
-                        Ok(())
-                    }));
+                    let got_focus_callback =
+                        FocusChangedEventHandler::create(Box::new(move |_, _| {
+                            got_focus_handler.enqueue_got_focus(webview_id);
+                            Ok(())
+                        }));
 
                     let lost_focus_handler = events_handler.clone();
-                    let lost_focus_callback = FocusChangedEventHandler::create(Box::new(move |_, _| {
-                        lost_focus_handler.enqueue_lost_focus(webview_id);
-                        Ok(())
-                    }));
+                    let lost_focus_callback =
+                        FocusChangedEventHandler::create(Box::new(move |_, _| {
+                            lost_focus_handler.enqueue_lost_focus(webview_id);
+                            Ok(())
+                        }));
 
                     unsafe {
                         webview
@@ -170,6 +173,21 @@ pub extern "C" fn webview_set_event_handler(
                 })
             })
             .log();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn webview_windows_set_focus(window: *mut c_void) {
+    #[cfg(target_os = "windows")]
+    {
+        use std::mem::transmute;
+        use windows::Win32::UI::Input::KeyboardAndMouse::SetFocus;
+        use windows::Win32::Foundation::HWND;
+
+        let window: HWND = unsafe { transmute(window) };
+        unsafe {
+            SetFocus(window);
+        }
     }
 }
 
