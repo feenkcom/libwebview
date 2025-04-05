@@ -2,7 +2,6 @@ use crate::events_handler::{EventsHandler, WebViewId};
 use anyhow::anyhow;
 use raw_window_handle_extensions::VeryRawWindowHandle;
 use std::error::Error;
-use std::ffi::c_void;
 use string_box::StringBox;
 use value_box::{ReturnBoxerResult, ValueBox, ValueBoxIntoRaw, ValueBoxPointer};
 use wry::dpi::{LogicalPosition, LogicalSize};
@@ -23,47 +22,6 @@ fn build(
         .map_err(|error| anyhow!(error))?;
 
     let window_handle = unsafe { WindowHandle::borrow_raw(raw_window_handle) };
-
-    // #[cfg(not(any(
-    //     target_os = "windows",
-    //     target_os = "macos",
-    //     target_os = "ios",
-    //     target_os = "android"
-    // )))]
-    // let fixed = {
-    //     use gtk::prelude::*;
-    //
-    //     let fixed = gtk::Fixed::new();
-    //     fixed.show_all();
-    //     fixed
-    // };
-
-    // let create_webview_builder = || {
-    //     #[cfg(any(
-    //         target_os = "windows",
-    //         target_os = "macos",
-    //         target_os = "ios",
-    //         target_os = "android"
-    //     ))]
-    //
-    //     attributes.take_value().map(|mut attributes| {
-    //         attributes.devtools = true;
-    //         builder.attrs = attributes
-    //     })?;
-    //
-    //     return WebViewBuilder::with_attributes();
-    //
-    //     #[cfg(not(any(
-    //         target_os = "windows",
-    //         target_os = "macos",
-    //         target_os = "ios",
-    //         target_os = "android"
-    //     )))]
-    //     {
-    //         use wry::WebViewBuilderExtUnix;
-    //         WebViewBuilder::new_gtk(&fixed)
-    //     }
-    // };
 
     let builder = attributes.take_value().map(|mut attributes| {
         attributes.devtools = true;
@@ -171,10 +129,9 @@ pub extern "C" fn webview_set_event_handler(
             .with_ref(|webview| {
                 events_handler.with_ref_ok(|events_handler| {
                     use webview2_com::FocusChangedEventHandler;
-                    use windows::Win32::System::WinRT::EventRegistrationToken;
                     use wry::WebViewExtWindows;
 
-                    let mut token = EventRegistrationToken::default();
+                    let mut token = 0;
 
                     let got_focus_handler = events_handler.clone();
                     let got_focus_callback =
@@ -210,19 +167,14 @@ pub extern "C" fn webview_set_event_handler(
 }
 
 #[no_mangle]
-#[allow(unused)]
-pub extern "C" fn webview_windows_set_focus(window: *mut c_void) {
-    #[cfg(target_os = "windows")]
-    {
-        use std::mem::transmute;
-        use windows::Win32::Foundation::HWND;
-        use windows::Win32::UI::Input::KeyboardAndMouse::SetFocus;
-
-        let window: HWND = unsafe { transmute(window) };
-        unsafe {
-            SetFocus(window);
-        }
-    }
+pub extern "C" fn webview_focus_parent(webview: *mut ValueBox<WebView>) {
+    webview
+        .with_ref(|webview| {
+            webview
+                .focus_parent()
+                .map_err(|error| anyhow!(error).into())
+        })
+        .log()
 }
 
 #[no_mangle]
