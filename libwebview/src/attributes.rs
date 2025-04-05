@@ -6,7 +6,7 @@ use wry::{dpi, Rect, WebViewAttributes};
 use crate::events_handler::{EventsHandler, WebViewId};
 
 #[no_mangle]
-pub extern "C" fn webview_attributes_default() -> *mut ValueBox<WebViewAttributes> {
+pub extern "C" fn webview_attributes_default() -> *mut ValueBox<WebViewAttributes<'static>> {
     let mut attributes = WebViewAttributes::default();
     attributes.focused = false;
     ValueBox::new(attributes).into_raw()
@@ -14,7 +14,7 @@ pub extern "C" fn webview_attributes_default() -> *mut ValueBox<WebViewAttribute
 
 #[no_mangle]
 pub extern "C" fn webview_attributes_set_url(
-    attributes: *mut ValueBox<WebViewAttributes>,
+    attributes: *mut ValueBox<WebViewAttributes<'static>>,
     url: *mut ValueBox<StringBox>,
 ) {
     attributes
@@ -32,7 +32,7 @@ pub extern "C" fn webview_attributes_set_url(
 
 #[no_mangle]
 pub extern "C" fn webview_attributes_set_html(
-    attributes: *mut ValueBox<WebViewAttributes>,
+    attributes: *mut ValueBox<WebViewAttributes<'static>>,
     html: *mut ValueBox<StringBox>,
 ) {
     attributes
@@ -46,7 +46,7 @@ pub extern "C" fn webview_attributes_set_html(
 
 #[no_mangle]
 pub extern "C" fn webview_attributes_set_events_handler(
-    attributes: *mut ValueBox<WebViewAttributes>,
+    attributes: *mut ValueBox<WebViewAttributes<'static>>,
     events_handler: *mut ValueBox<EventsHandler>,
     webview_id: WebViewId
 ) {
@@ -73,7 +73,7 @@ pub extern "C" fn webview_attributes_set_events_handler(
 
 #[no_mangle]
 pub extern "C" fn webview_attributes_set_position(
-    attributes: *mut ValueBox<WebViewAttributes>,
+    attributes: *mut ValueBox<WebViewAttributes<'static>>,
     x: f64,
     y: f64,
 ) {
@@ -99,13 +99,13 @@ pub extern "C" fn webview_attributes_set_position(
 
 #[no_mangle]
 pub extern "C" fn webview_attributes_add_initial_script(
-    attributes: *mut ValueBox<WebViewAttributes>,
+    attributes: *mut ValueBox<WebViewAttributes<'static>>,
     script: *mut ValueBox<StringBox>,
 ) {
     script
         .with_ref(|script| {
             attributes.with_mut_ok(|attributes| {
-                attributes.initialization_scripts.push(script.to_string())
+                attributes.initialization_scripts.push((script.to_string(), true))
             })
         })
         .log();
@@ -113,7 +113,7 @@ pub extern "C" fn webview_attributes_add_initial_script(
 
 #[no_mangle]
 pub extern "C" fn webview_attributes_set_size(
-    attributes: *mut ValueBox<WebViewAttributes>,
+    attributes: *mut ValueBox<WebViewAttributes<'static>>,
     width: f64,
     height: f64,
 ) {
@@ -138,6 +138,6 @@ pub extern "C" fn webview_attributes_set_size(
 }
 
 #[no_mangle]
-pub extern "C" fn webview_attributes_release(attributes: *mut ValueBox<WebViewAttributes>) {
+pub extern "C" fn webview_attributes_release(attributes: *mut ValueBox<WebViewAttributes<'static>>) {
     attributes.release();
 }

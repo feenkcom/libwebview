@@ -1,7 +1,9 @@
+#![allow(non_snake_case)]
+
 mod attributes;
-mod webview;
-mod script;
 mod events_handler;
+mod script;
+mod webview;
 
 use std::ffi::c_void;
 pub use value_box_ffi::*;

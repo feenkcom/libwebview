@@ -8,7 +8,7 @@ name = "WebView"
 crate-type = ["cdylib"]
 
 [dependencies]
-wry = "0.41"
+wry = { git = "https://github.com/syrel/wry", rev = "3a0dce03e3acc300c27bc1adcd3474e8e3bcb2fe" }
 raw-window-handle-extensions = "0.6"
 env_logger = "0.11"
 anyhow = "1.0"
@@ -20,8 +20,8 @@ value-box-ffi = { version = "1", features = ["string-box"] }
 version = "0.18"
 
 [target."cfg(target_os = \"windows\")".dependencies.webview2-com]
-version = "0.31"
+version = "0.37"
 
 [target."cfg(target_os = \"windows\")".dependencies.windows]
-version = "0.57"
+version = "0.61"
 features = [ "Win32_System_Com", "Win32_UI_Input_KeyboardAndMouse" ]

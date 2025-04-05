@@ -1,6 +1,7 @@
 use crate::events_handler::{EventsHandler, WebViewId};
 use anyhow::anyhow;
 use raw_window_handle_extensions::VeryRawWindowHandle;
+use std::error::Error;
 use std::ffi::c_void;
 use string_box::StringBox;
 use value_box::{ReturnBoxerResult, ValueBox, ValueBoxIntoRaw, ValueBoxPointer};
@@ -11,7 +12,7 @@ use wry::{Rect, WebView, WebViewAttributes, WebViewBuilder};
 use crate::script::ScriptToEvaluate;
 
 fn build(
-    attributes: *mut ValueBox<WebViewAttributes>,
+    attributes: *mut ValueBox<WebViewAttributes<'static>>,
     raw_window_handle: *mut VeryRawWindowHandle,
 ) -> value_box::Result<WebView> {
     let raw_window_handle = unsafe { VeryRawWindowHandle::from_ptr(raw_window_handle) }
@@ -23,29 +24,64 @@ fn build(
 
     let window_handle = unsafe { WindowHandle::borrow_raw(raw_window_handle) };
 
-    #[cfg(not(any(
-        target_os = "windows",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "android"
-    )))]
-    let fixed = {
-        use gtk::prelude::*;
+    // #[cfg(not(any(
+    //     target_os = "windows",
+    //     target_os = "macos",
+    //     target_os = "ios",
+    //     target_os = "android"
+    // )))]
+    // let fixed = {
+    //     use gtk::prelude::*;
+    //
+    //     let fixed = gtk::Fixed::new();
+    //     fixed.show_all();
+    //     fixed
+    // };
 
-        let fixed = gtk::Fixed::new();
-        fixed.show_all();
-        fixed
-    };
+    // let create_webview_builder = || {
+    //     #[cfg(any(
+    //         target_os = "windows",
+    //         target_os = "macos",
+    //         target_os = "ios",
+    //         target_os = "android"
+    //     ))]
+    //
+    //     attributes.take_value().map(|mut attributes| {
+    //         attributes.devtools = true;
+    //         builder.attrs = attributes
+    //     })?;
+    //
+    //     return WebViewBuilder::with_attributes();
+    //
+    //     #[cfg(not(any(
+    //         target_os = "windows",
+    //         target_os = "macos",
+    //         target_os = "ios",
+    //         target_os = "android"
+    //     )))]
+    //     {
+    //         use wry::WebViewBuilderExtUnix;
+    //         WebViewBuilder::new_gtk(&fixed)
+    //     }
+    // };
 
-    let create_webview_builder = || {
+    let builder = attributes.take_value().map(|mut attributes| {
+        attributes.devtools = true;
+        WebViewBuilder::with_attributes(attributes)
+    })?;
+
+    let webview = {
         #[cfg(any(
             target_os = "windows",
             target_os = "macos",
             target_os = "ios",
             target_os = "android"
         ))]
-        return WebViewBuilder::new_as_child(&window_handle);
-
+        {
+            builder
+                .build_as_child(&window_handle)
+                .map_err(|error| anyhow!(error))?
+        }
         #[cfg(not(any(
             target_os = "windows",
             target_os = "macos",
@@ -53,25 +89,21 @@ fn build(
             target_os = "android"
         )))]
         {
+            use gtk::prelude::*;
             use wry::WebViewBuilderExtUnix;
-            WebViewBuilder::new_gtk(&fixed)
+
+            let fixed = gtk::Fixed::new();
+            fixed.show_all();
+
+            builder.build_gtk(&fixed).map_err(|error| anyhow!(error))?
         }
     };
-
-    let mut builder = create_webview_builder();
-
-    attributes.take_value().map(|mut attributes| {
-        attributes.devtools = true;
-        builder.attrs = attributes
-    })?;
-
-    let webview = builder.build().map_err(|error| anyhow!(error))?;
     Ok(webview)
 }
 
 #[no_mangle]
 pub extern "C" fn webview_build(
-    attributes: *mut ValueBox<WebViewAttributes>,
+    attributes: *mut ValueBox<WebViewAttributes<'static>>,
     window_handle: *mut VeryRawWindowHandle,
 ) -> *mut ValueBox<WebView> {
     build(attributes, window_handle)
@@ -127,6 +159,7 @@ pub extern "C" fn webview_set_bounds(
 }
 
 #[no_mangle]
+#[allow(unused)]
 pub extern "C" fn webview_set_event_handler(
     webview: *mut ValueBox<WebView>,
     events_handler: *mut ValueBox<EventsHandler>,
@@ -177,12 +210,13 @@ pub extern "C" fn webview_set_event_handler(
 }
 
 #[no_mangle]
+#[allow(unused)]
 pub extern "C" fn webview_windows_set_focus(window: *mut c_void) {
     #[cfg(target_os = "windows")]
     {
         use std::mem::transmute;
-        use windows::Win32::UI::Input::KeyboardAndMouse::SetFocus;
         use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::Input::KeyboardAndMouse::SetFocus;
 
         let window: HWND = unsafe { transmute(window) };
         unsafe {
@@ -192,21 +226,28 @@ pub extern "C" fn webview_windows_set_focus(window: *mut c_void) {
 }
 
 #[no_mangle]
-pub extern "C" fn webview_toggle_visible(webview: *mut ValueBox<WebView>) {
-    webview
-        .with_ref_ok(|webview| {
-            let _ = webview.set_visible(false);
-            let _ = webview.set_visible(true);
-        })
-        .log();
-}
-
-#[no_mangle]
 pub extern "C" fn webview_load_url(webview: *mut ValueBox<WebView>, url: *mut ValueBox<StringBox>) {
     webview
         .with_ref(|webview| {
             url.with_ref_ok(|url| {
                 let _ = webview.load_url(url.as_str());
+            })
+        })
+        .log();
+}
+
+#[no_mangle]
+pub extern "C" fn webview_current_url(
+    webview: *mut ValueBox<WebView>,
+    url: *mut ValueBox<StringBox>,
+) {
+    webview
+        .with_ref(|webview| {
+            url.with_mut(|url| {
+                webview
+                    .url()
+                    .map(|current_url| url.set_string(current_url))
+                    .map_err(|error| (Box::new(error) as Box<dyn Error>).into())
             })
         })
         .log();
