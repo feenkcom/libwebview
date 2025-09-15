@@ -43,10 +43,12 @@ impl EventsHandler {
         }));
     }
 
+    #[allow(dead_code)]
     pub fn enqueue_got_focus(&self, webview_id: WebViewId) {
         self.enqueue_event(WebViewEvent::GotFocus(WebViewGotFocusEvent { webview_id }));
     }
 
+    #[allow(dead_code)]
     pub fn enqueue_lost_focus(&self, webview_id: WebViewId) {
         self.enqueue_event(WebViewEvent::LostFocus(WebViewLostFocusEvent {
             webview_id,

@@ -1,9 +1,11 @@
+use crate::events_handler::{EventsHandler, WebViewId};
+use anyhow::anyhow;
+use std::str::FromStr;
 use string_box::StringBox;
 use value_box::{ReturnBoxerResult, ValueBox, ValueBoxPointer};
 use wry::dpi::{LogicalPosition, Position, Size};
+use wry::http::{HeaderMap, HeaderName, HeaderValue};
 use wry::{dpi, Rect, WebViewAttributes};
-
-use crate::events_handler::{EventsHandler, WebViewId};
 
 #[no_mangle]
 pub extern "C" fn webview_attributes_default() -> *mut ValueBox<WebViewAttributes<'static>> {
@@ -45,10 +47,41 @@ pub extern "C" fn webview_attributes_set_html(
 }
 
 #[no_mangle]
+pub extern "C" fn webview_attributes_add_header(
+    attributes: *mut ValueBox<WebViewAttributes<'static>>,
+    header_name: *mut ValueBox<StringBox>,
+    header_value: *mut ValueBox<StringBox>,
+) -> bool {
+    attributes
+        .with_mut(|attributes| {
+            header_name.with_ref(|name| {
+                header_value.with_ref(|value| {
+                    HeaderName::from_str(name.as_str())
+                        .map_err(|error| anyhow!(error).into())
+                        .and_then(|header_name| {
+                            HeaderValue::from_str(value.as_str())
+                                .map_err(|error| anyhow!(error).into())
+                                .map(|header_value| {
+                                    if attributes.headers.is_none() {
+                                        attributes.headers = Some(HeaderMap::new());
+                                    }
+                                    if let Some(headers) = attributes.headers.as_mut() {
+                                        headers.insert(header_name, header_value);
+                                    };
+                                    true
+                                })
+                        })
+                })
+            })
+        })
+        .or_log(false)
+}
+
+#[no_mangle]
 pub extern "C" fn webview_attributes_set_events_handler(
     attributes: *mut ValueBox<WebViewAttributes<'static>>,
     events_handler: *mut ValueBox<EventsHandler>,
-    webview_id: WebViewId
+    webview_id: WebViewId,
 ) {
     attributes
         .with_mut(|attributes| {
@@ -59,7 +92,7 @@ pub extern "C" fn webview_attributes_set_events_handler(
                 }));
                 let handler_for_navigation = event_handler.clone();
                 attributes.navigation_handler = Some(Box::new(move |url| {
-                    handler_for_navigation.enqueue_navigation(webview_id,url);
+                    handler_for_navigation.enqueue_navigation(webview_id, url);
                     true
                 }));
                 let handler_for_loading = event_handler.clone();
@@ -105,7 +138,9 @@ pub extern "C" fn webview_attributes_add_initial_script(
     script
         .with_ref(|script| {
             attributes.with_mut_ok(|attributes| {
-                attributes.initialization_scripts.push((script.to_string(), true))
+                attributes
+                    .initialization_scripts
+                    .push((script.to_string(), true))
             })
         })
         .log();
@@ -138,6 +173,8 @@ pub extern "C" fn webview_attributes_set_size(
 }
 
 #[no_mangle]
-pub extern "C" fn webview_attributes_release(attributes: *mut ValueBox<WebViewAttributes<'static>>) {
+pub extern "C" fn webview_attributes_release(
+    attributes: *mut ValueBox<WebViewAttributes<'static>>,
+) {
     attributes.release();
 }
