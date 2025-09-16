@@ -1,10 +1,11 @@
 use crate::events_handler::{EventsHandler, WebViewId};
 use anyhow::anyhow;
+use std::borrow::Cow;
 use std::str::FromStr;
 use string_box::StringBox;
 use value_box::{ReturnBoxerResult, ValueBox, ValueBoxPointer};
 use wry::dpi::{LogicalPosition, Position, Size};
-use wry::http::{HeaderMap, HeaderName, HeaderValue};
+use wry::http::{HeaderMap, HeaderName, HeaderValue, Response, StatusCode};
 use wry::{dpi, Rect, WebViewAttributes};
 
 #[no_mangle]
@@ -75,6 +76,34 @@ pub extern "C" fn webview_attributes_add_header(
             })
         })
         .or_log(false)
+}
+
+#[no_mangle]
+pub extern "C" fn webview_attributes_add_custom_protocol(
+    attributes: *mut ValueBox<WebViewAttributes<'static>>,
+    protocol_name: *mut ValueBox<StringBox>,
+    content: *mut ValueBox<StringBox>,
+) {
+    attributes
+        .with_mut(|attributes| {
+            protocol_name.with_ref(|protocol_name| {
+                content.with_ref_ok(|content| {
+                    let content = Vec::from(content.as_bytes());
+                    attributes.custom_protocols.insert(
+                        protocol_name.to_string(),
+                        Box::new(move |_webview_id, _request, responder| {
+                            responder.respond(
+                                Response::builder()
+                                    .status(StatusCode::OK)
+                                    .body(Cow::Owned(content.clone()))
+                                    .unwrap(),
+                            )
+                        }),
+                    );
+                })
+            })
+        })
+        .log();
 }
 
 #[no_mangle]
